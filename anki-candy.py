@@ -106,6 +106,8 @@ class IncrementalDeckOptions(QDialog):
     def __init__(self):
         QDialog.__init__(self, mw)
 
+        self.model = mw.col.models.current()
+
         self.setWindowTitle("Incremental deck options")
 
         self.verticalLayout = QVBoxLayout(self)
@@ -115,7 +117,7 @@ class IncrementalDeckOptions(QDialog):
         self.maxEditDistanceLabel = QLabel(self)
         self.maxEditDistanceLabel.setText("Max edit distance:")
         self.maxEditDistance = QSpinBox(self)
-        self.maxEditDistance.setValue(DefaultMaxEditDistance)
+        self.maxEditDistance.setValue(self.model['maxEditDistance'])
         self.gridLayout.addWidget(self.maxEditDistanceLabel, 0, 0)
         self.gridLayout.addWidget(self.maxEditDistance, 0, 1)
 
@@ -132,9 +134,8 @@ class IncrementalDeckOptions(QDialog):
         self.show()
 
     def onAccepted(self):
-        model = mw.col.models.current()
-        model['maxEditDistance'] = self.maxEditDistance.value()
-        mw.col.models.save(model)
+        self.model['maxEditDistance'] = self.maxEditDistance.value()
+        mw.col.models.save(self.model)
 
         QDialog.accept(self)
 
