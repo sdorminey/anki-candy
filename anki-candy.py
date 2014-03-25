@@ -19,28 +19,77 @@ from PyQt4 import QtCore, QtGui
 DeckPrefix = "Incremental - "
 MaxEditDistance = 4
 
-def createDeck():
-    "Create a new incremental deck."
-    currentDeck = mw.col.decks.current()
-    deckName = DeckPrefix +  currentDeck['name']
+class NewIncrementalDeck(QDialog):
+    def __init__(self):
+        QDialog.__init__(self, mw)
 
-    # First, see if the deck already exists.
-    did = mw.col.decks.id(deckName, False)
+        self.setWindowTitle("New incremental deck")
+        self.resize(400, 300)
+        self.verticalLayout = QVBoxLayout(self)
 
-    if did is not None:
-        showInfo("Deck already exists.")
-        return
+        self.label = QLabel(self)
+        self.label.setText("Which field has words in the target language?")
 
-    # Otherwise, create it.
-    did = mw.col.decks.id(deckName, True)
+        self.buttonBox = QDialogButtonBox(self)
+        self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
+        self.buttonBox.setStandardButtons(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
 
-    m = mw.col.models.byName("Basic")
-    deck = mw.col.decks.get(did)
-    deck['mid'] = m['id']
-    mw.col.decks.save(deck)
+        self.list = QListWidget(self)
+
+        self.verticalLayout.addWidget(self.label)
+        self.verticalLayout.addWidget(self.list)
+        self.verticalLayout.addWidget(self.buttonBox)
+
+        self.connect(self.buttonBox, SIGNAL("accepted()"), self.onAccepted)
+        self.connect(self.buttonBox, SIGNAL("rejected()"), self.onRejected)
+        self.populateListItems()
+
+        self.show()
     
-    # show a message box
-    showInfo("Incremental deck \"%s\" created from current deck." % deckName)
+    def populateListItems(self):
+        model = mw.col.models.current()
+        self.fields = model['flds']
+        fieldNames = [f['name'] for f in self.fields]
+        self.list.addItems(fieldNames)
+
+    def createModel(self):
+        oldModel = mw.col.models.current().copy()
+        oldModel['selectorField'] = self.fields[self.list.currentRow()]
+        return oldModel
+
+    def onAccepted(self):
+        "Selection is chosen"
+        currentDeck = mw.col.decks.current()
+        deckName = DeckPrefix + currentDeck['name']
+
+        # Validation:
+        # See if the deck already exists
+        did = mw.col.decks.id(deckName, False)
+
+        if did is not None:
+            showInfo("Deck already exists.")
+            return
+
+        # See if we've actually selected something
+        if self.list.currentRow() < 0:
+            showInfo("Please select something.")
+            return
+
+        # Otherwise, create it.
+        did = mw.col.decks.id(deckName, True)
+        m = self.createModel()
+        deck = mw.col.decks.get(did)
+        deck['mid'] = m['id']
+
+        # Save deck
+        mw.col.decks.save(deck)
+        showInfo("Incremental deck \"%s\" created from current deck." % deckName)
+
+        QDialog.accept(self)
+
+    def onRejected(self):
+        "Dialog is rejected"
+        QDialog.reject(self)
 
 def getMasterDeckNotes():
     "Returns all note ids of the master of the current (incremental) deck."
@@ -109,6 +158,8 @@ def copyToIncrementalDeck(noteId):
         card.id = timestampID(mw.col.db, "cards")
         card.flush()
 
+# Menu actions:
+# -------------
 def addToDeck():
     "Add all cards relevant to the source text (provided in the clipboard) from the master deck to the incremental deck."
     numAdded = 0
@@ -146,7 +197,13 @@ def addToDeck():
 
     showInfo("Source text was: %s\nAdded %d notes, %d were already known and %d were not found." % (sourceText, numAdded, numAlreadyAdded, numNotFound))
 
+def createDeck():
+    "Create a new incremental deck."
+    dialog = NewIncrementalDeck()
+    return
+
 # UI definition:
+# --------------
 
 # New incremental deck
 newDeckAction = QAction("New incremental deck", mw)
