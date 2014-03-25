@@ -19,6 +19,8 @@ from PyQt4 import QtCore, QtGui
 DeckPrefix = "Incremental - "
 MaxEditDistance = 4
 
+# Forms:
+# ------
 class NewIncrementalDeck(QDialog):
     def __init__(self):
         QDialog.__init__(self, mw)
@@ -91,6 +93,31 @@ class NewIncrementalDeck(QDialog):
         "Dialog is rejected"
         QDialog.reject(self)
 
+class IncrementalDeckOptions(QDialog):
+    def __init__(self):
+        QDialog.__init__(self, mw)
+
+        self.setWindowTitle("Incremental deck options")
+        self.resize(400, 300)
+        self.gridLayout = QGridLayout(self)
+
+        self.maxEditDistanceLabel = QLabel(self)
+        self.maxEditDistanceLabel.setText("Max edit distance:")
+        self.maxEditDistance = QSpinBox(self)
+        self.gridLayout.addWidget(self.maxEditDistanceLabel, 0, 0)
+        self.gridLayout.addWidget(self.maxEditDistance, 0, 1)
+
+        self.connect(self.buttonBox, SIGNAL("accepted()"), self.onAccepted)
+        self.connect(self.buttonBox, SIGNAL("rejected()"), self.onRejected)
+
+        self.show()
+
+    def onAccepted(self):
+        pass
+
+    def onRejected(self):
+        pass
+
 def getMasterDeckNotes():
     "Returns all note ids of the master of the current (incremental) deck."
     currentDeck = mw.col.decks.current()
@@ -146,7 +173,9 @@ def getClosestNote(source, targets):
 def getNoteSelectors(noteId):
     "Returns an array of possible selectors for the note. A selector is a possible 'name' for the note."
     note = mw.col.getNote(noteId)
-    return [s for n in note.values() for s in n.split()]
+    model = mw.col.models.current()
+    field = model['selectorField']
+    return [s for n in note[field] for s in n.split()]
 
 def copyToIncrementalDeck(noteId):
     "Copies all cards belonging to the note id to the incremental deck."
@@ -160,6 +189,16 @@ def copyToIncrementalDeck(noteId):
 
 # Menu actions:
 # -------------
+def createDeck():
+    "Create a new incremental deck."
+    dialog = NewIncrementalDeck()
+    return
+
+def deckOptions():
+    "Incremental deck options."
+    dialog = IncrementalDeckOptions()
+    return
+
 def addToDeck():
     "Add all cards relevant to the source text (provided in the clipboard) from the master deck to the incremental deck."
     numAdded = 0
@@ -197,18 +236,17 @@ def addToDeck():
 
     showInfo("Source text was: %s\nAdded %d notes, %d were already known and %d were not found." % (sourceText, numAdded, numAlreadyAdded, numNotFound))
 
-def createDeck():
-    "Create a new incremental deck."
-    dialog = NewIncrementalDeck()
-    return
-
 # UI definition:
 # --------------
-
 # New incremental deck
 newDeckAction = QAction("New incremental deck", mw)
 mw.connect(newDeckAction, SIGNAL("triggered()"), createDeck)
 mw.form.menuTools.addAction(newDeckAction)
+
+# Incremental deck options
+deckOptionsAction = QAction("Incremental deck options", mw)
+mw.connect(deckOptionsAction, SIGNAL("triggered()"), deckOptions)
+mw.form.menuTools.addAction(deckOptions)
 
 # Add to incremental deck
 addDeckAction = QAction("Add to incremental deck", mw)
